@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEIC Voca Master</title>
+    <style>
+        /* 초기화 및 대화면 최적화 설정 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f3f4f6;
+            color: #1f2937;
+            /* 폰트 크기는 16px 고정 (과도한 스케일링 방지) */
+            font-size: 16px; 
+            line-height: 1.5;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        /* 메인 컨테이너: 브라우저 너비의 96% 사용 (UHD 대응) */
+        #app-container {
+            width: 96%;
+            margin: 20px 0;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 화면 분할 (View Routing) */
+        .screen {
+            display: none;
+            flex: 1;
+            padding: 24px;
+            flex-direction: column;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* 공통 헤더 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            color: #111827;
+        }
+
+        /* 기본 버튼 스타일 */
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary { background-color: #3b82f6; color: white; }
+        .btn-primary:hover { background-color: #2563eb; }
+        .btn-secondary { background-color: #e5e7eb; color: #374151; }
+        .btn-secondary:hover { background-color: #d1d5db; }
+        
+        .btn-danger { background-color: #ef4444; color: white; }
+        .btn-danger:hover { background-color: #dc2626; }
+        
+        /* 연한 붉은색 삭제 버튼 */
+        .btn-light-danger { 
+            background-color: #fee2e2; 
+            color: #b91c1c; 
+            border: 1px solid #fca5a5;
+        }
+        .btn-light-danger:hover { background-color: #fecaca; }
+        
+        .btn-success { background-color: #10b981; color: white; }
+        .btn-success:hover { background-color: #059669; }
+
+        /* TTS(음성 읽기) 전용 버튼 스타일 */
+        .tts-group {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+        .btn-tts {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            background-color: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            color: #334155;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .btn-tts:hover { background-color: #e2e8f0; }
+
+        /* 메인 화면 메뉴 버튼 */
+        .menu-grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            margin-top: 40px;
+        }
+
+        .menu-btn {
+            padding: 40px 20px;
+            font-size: 1.25rem;
+            border-radius: 12px;
+            background-color: #f8fafc;
+            border: 2px solid #e2e8f0;
+            color: #334155;
+        }
+        .menu-btn:hover {
+            background-color: #f1f5f9;
+            border-color: #cbd5e1;
+            transform: translateY(-2px);
+        }
+
+        /* 단어장 리스트 (Grid 기반) */
+        .word-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .word-card {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .word-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .word-eng {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1f2937;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .word-stats {
+            font-size: 0.875rem;
+            color: #6b7280;
+            background-color: #e5e7eb;
+            padding: 4px 8px;
+            border-radius: 4px;
+            text-align: right;
+        }
+
+        /* 뜻 목록 스타일 */
+        .meaning-list {
+            list-style: none;
+            margin-bottom: 16px;
+        }
+
+        .meaning-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+        }
+        .badge.noun { background-color: #3b82f6; } 
+        .badge.verb { background-color: #10b981; } 
+        .badge.adj { background-color: #8b5cf6; } 
+        .badge.adv { background-color: #f59e0b; } 
+        .badge.other { background-color: #6b7280; } 
+
+        .word-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: auto;
+        }
+
+        /* 정렬 탭 */
+        .sort-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .sort-tab {
+            padding: 6px 12px;
+            background: none;
+            border: 2px solid #e5e7eb;
+            color: #6b7280;
+        }
+        .sort-tab.active {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background-color: #eff6ff;
+        }
+
+        /* 입력 폼 */
+        .add-form {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .meaning-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .meaning-row select { width: 120px; }
+        .meaning-row input { flex: 1; }
+
+        /* 시험 화면 */
+        .test-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            text-align: center;
+        }
+
+        .test-word {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: #111827;
+        }
+
+        .test-meaning-box {
+            min-height: 100px;
+            margin-bottom: 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .test-meaning-list {
+            list-style: none;
+            font-size: 1.25rem;
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 16px;
+        }
+
+        /* 시험 기록 카드 스타일 */
+        .history-card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .history-date {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+        .history-score {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .history-details {
+            margin-top: 12px;
+            font-size: 0.9rem;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <!-- 메인 화면 -->
+    <div id="main-screen" class="screen active">
+        <div class="header">
+            <h1>TOEIC Voca Master</h1>
+        </div>
+        <div style="text-align: center; margin-top: 20px; color: #4b5563;">
+            <p>목표: TOEIC 600점 ~ 990점</p>
+            <p>현재 등록된 단어: <span id="total-words-count">0</span>개</p>
+        </div>
+        <div class="menu-grid">
+            <button class="menu-btn" onclick="startTest()">시험</button>
+            <button class="menu-btn" onclick="showScreen('manage-screen')">단어 관리</button>
+            <button class="menu-btn" onclick="showScreen('history-screen')">시험 기록 조회</button>
+        </div>
+    </div>
+
+    <!-- 시험 화면 -->
+    <div id="test-screen" class="screen">
+        <div class="header">
+            <h1>시험 진행 중</h1>
+            <button class="btn-secondary" onclick="showScreen('main-screen')">⬅ 메인으로</button>
+        </div>
+        <div class="test-container" id="test-area">
+            <div id="test-progress" style="margin-bottom: 16px; color: #6b7280; font-weight: bold;">문제 1 / 10</div>
+            
+            <div class="test-word" id="test-question">Word</div>
+            
+            <!-- 시험 화면용 TTS 버튼 영역 추가 -->
+            <div class="tts-group" style="justify-content: center; margin-bottom: 24px;">
+                <button class="btn-tts" id="test-tts-us">미국식</button>
+                <button class="btn-tts" id="test-tts-au">호주식</button>
+                <button class="btn-tts" id="test-tts-gb">영국식</button>
+            </div>
+            
+            <div class="test-meaning-box">
+                <button id="btn-show-meaning" class="btn-primary" onclick="showTestMeaning()">뜻 보기</button>
+                <div id="test-answer" class="hidden">
+                    <ul class="test-meaning-list" id="test-answer-list"></ul>
+                </div>
+            </div>
+
+            <div class="test-controls hidden" id="test-judge-btns">
+                <button class="btn-success" style="width: 140px; font-size: 1.125rem;" onclick="judgeAnswer(true)">아는 단어</button>
+                <button class="btn-danger" style="width: 140px; font-size: 1.125rem;" onclick="judgeAnswer(false)">모르는 단어</button>
+            </div>
+        </div>
+        <div class="test-container hidden" id="test-result-area">
+            <h2 style="margin-bottom: 24px;">시험 결과</h2>
+            <div id="test-result-stats" style="font-size: 1.5rem; margin-bottom: 24px;"></div>
+            <button class="btn-primary" onclick="showScreen('main-screen')">메인으로 돌아가기</button>
+        </div>
+    </div>
+
+    <!-- 단어 관리 화면 -->
+    <div id="manage-screen" class="screen">
+        <div class="header">
+            <h1>단어 관리</h1>
+            <div>
+                <button class="btn-primary" id="btn-toggle-form" onclick="toggleForm()">+ 새로운 단어 추가</button>
+                <button class="btn-secondary" onclick="showScreen('main-screen')">⬅ 메인으로</button>
+            </div>
+        </div>
+
+        <div id="word-form" class="add-form hidden">
+            <h3 id="form-title" style="margin-bottom: 16px;">단어 추가</h3>
+            <input type="hidden" id="edit-word-id" value="">
+            
+            <div class="form-group">
+                <label>영어 단어</label>
+                <input type="text" id="input-eng" class="form-control" placeholder="예: comprehensive">
+            </div>
+            
+            <div class="form-group">
+                <label>의미 및 품사</label>
+                <div id="meaning-rows-container"></div>
+                <button class="btn-secondary" style="margin-top: 8px; font-size: 0.875rem;" onclick="addMeaningRow()">+ 의미 추가</button>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button class="btn-primary" onclick="saveWord()">저장</button>
+                <button class="btn-secondary" onclick="toggleForm(false)">취소</button>
+            </div>
+        </div>
+
+        <div class="sort-tabs">
+            <button class="sort-tab active" id="tab-latest" onclick="setSort('latest')">Latest (최신순)</button>
+            <button class="sort-tab" id="tab-alphabet" onclick="setSort('alphabet')">Alphabet (알파벳순)</button>
+            <button class="sort-tab" id="tab-recent-test" onclick="setSort('recent-test')">최근 시험</button>
+        </div>
+
+        <div class="word-grid" id="word-list">
+            <!-- 단어 카드가 렌더링됨 -->
+        </div>
+    </div>
+
+    <!-- 시험 기록 조회 화면 -->
+    <div id="history-screen" class="screen">
+        <div class="header">
+            <h1>시험 기록 조회</h1>
+            <button class="btn-secondary" onclick="showScreen('main-screen')">⬅ 메인으로</button>
+        </div>
+        
+        <div class="word-grid" id="history-list">
+            <!-- 시험 결과(상세 단어 내역 포함) 카드가 렌더링됨 -->
+        </div>
+    </div>
+</div>
+
+<script>
+    // 기존 데이터베이스 키 유지 (데이터 보존 원칙)
+    const STORAGE_KEY = 'toeic_voca_db_v1';
+    const HISTORY_KEY = 'toeic_test_history_v1';
+
+    let wordsData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    let testHistoryData = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+
+    let currentSort = 'latest';
+
+    // --- TTS (음성 합성) 함수 ---
+    function speakWord(text, lang) {
+        if (!('speechSynthesis' in window)) {
+            alert("현재 사용 중인 브라우저가 음성 합성 기능을 지원하지 않습니다.");
+            return;
+        }
+        
+        // 이전 음성이 재생 중이면 취소하여 겹침 방지
+        window.speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = lang; // 'en-US', 'en-AU', 'en-GB'
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(wordsData));
+        document.getElementById('total-words-count').innerText = wordsData.length;
+    }
+
+    function saveHistory() {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(testHistoryData));
+    }
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+        
+        if (screenId === 'manage-screen') renderWordList();
+        if (screenId === 'history-screen') renderHistoryList();
+        if (screenId === 'main-screen') document.getElementById('total-words-count').innerText = wordsData.length;
+        
+        toggleForm(false);
+    }
+
+    function setSort(type) {
+        currentSort = type;
+        
+        document.getElementById('tab-latest').classList.toggle('active', type === 'latest');
+        document.getElementById('tab-alphabet').classList.toggle('active', type === 'alphabet');
+        document.getElementById('tab-recent-test').classList.toggle('active', type === 'recent-test');
+        
+        renderWordList();
+    }
+
+    function getAccuracyInfo(testCount, correctCount) {
+        if (testCount === 0) return { text: "평가 전", color: "#6b7280" };
+        const rate = (correctCount / testCount) * 100;
+        const color = rate >= 80 ? "#10b981" : rate >= 50 ? "#f59e0b" : "#ef4444";
+        return { text: rate.toFixed(1) + "%", color: color };
+    }
+
+    const typeLabels = {
+        noun: "명사", verb: "동사", adj: "형용사", adv: "부사", other: "기타"
+    };
+
+    function renderWordList() {
+        const listContainer = document.getElementById('word-list');
+        listContainer.innerHTML = '';
+
+        let displayWords = [...wordsData];
+        if (currentSort === 'latest') {
+            displayWords.sort((a, b) => b.timestamp - a.timestamp);
+        } else if (currentSort === 'alphabet') {
+            displayWords.sort((a, b) => a.eng.localeCompare(b.eng));
+        } else if (currentSort === 'recent-test') {
+            displayWords.sort((a, b) => (b.lastTested || 0) - (a.lastTested || 0));
+        }
+
+        displayWords.forEach(word => {
+            const accInfo = getAccuracyInfo(word.testCount, word.correctCount);
+            const dateStr = new Date(word.timestamp).toLocaleDateString();
+            
+            let lastTestedStr = "평가 기록 없음";
+            if (word.lastTested) lastTestedStr = new Date(word.lastTested).toLocaleString();
+
+            const meaningsHtml = word.meanings.map(m => `
+                <li class="meaning-item">
+                    <span class="badge ${m.type}">${typeLabels[m.type] || "기타"}</span>
+                    <span>${m.ko}</span>
+                </li>
+            `).join('');
+
+            const card = document.createElement('div');
+            card.className = 'word-card';
+            // 영단어 텍스트와 하단 TTS 버튼 구조화
+            card.innerHTML = `
+                <div>
+                    <div class="word-header">
+                        <div class="word-eng">
+                            ${word.eng}
+                            <div class="tts-group">
+                                <button class="btn-tts" onclick="speakWord('${word.eng.replace(/'/g, "\\'")}', 'en-US')">미국식</button>
+                                <button class="btn-tts" onclick="speakWord('${word.eng.replace(/'/g, "\\'")}', 'en-AU')">호주식</button>
+                                <button class="btn-tts" onclick="speakWord('${word.eng.replace(/'/g, "\\'")}', 'en-GB')">영국식</button>
+                            </div>
+                        </div>
+                        <div class="word-stats" style="color: ${accInfo.color}; font-weight: bold;">
+                            정답률: ${accInfo.text} <br>
+                            <span style="font-size: 0.75rem; color:#6b7280; font-weight: normal;">(출제: ${word.testCount}회)</span>
+                        </div>
+                    </div>
+                    <ul class="meaning-list">${meaningsHtml}</ul>
+                    <div style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px;">등록일: ${dateStr}</div>
+                    <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 12px;">최근 시험: ${lastTestedStr}</div>
+                </div>
+                <div class="word-actions">
+                    <button class="btn-secondary" onclick="editWord(${word.id})">수정</button>
+                    <button class="btn-light-danger" onclick="deleteWord(${word.id})">삭제</button>
+                </div>
+            `;
+            listContainer.appendChild(card);
+        });
+    }
+
+    // --- 시험 기록 상세 목록 (TTS 포함) 렌더링 ---
+    function renderHistoryList() {
+        const listContainer = document.getElementById('history-list');
+        listContainer.innerHTML = '';
+
+        if (testHistoryData.length === 0) {
+            listContainer.innerHTML = '<p style="color: #64748b;">아직 진행한 시험 기록이 없습니다.</p>';
+            return;
+        }
+
+        testHistoryData.forEach(record => {
+            const dateStr = new Date(record.date).toLocaleString();
+            const accuracy = record.total > 0 ? ((record.correct / record.total) * 100).toFixed(1) : 0;
+            
+            // 기록된 세부 단어(words array)가 있다면 내부 리스트로 생성
+            let wordsListHtml = '';
+            if (record.words && record.words.length > 0) {
+                wordsListHtml = `<div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed #cbd5e1;">`;
+                record.words.forEach(w => {
+                    const statusText = w.isCorrect ? '<span style="color:#10b981; font-weight:bold; width: 24px; display:inline-block;">O</span>' : '<span style="color:#ef4444; font-weight:bold; width: 24px; display:inline-block;">X</span>';
+                    wordsListHtml += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div style="font-size: 1rem; font-weight: 600; color: #334155;">
+                                ${statusText} ${w.eng}
+                            </div>
+                            <div class="tts-group" style="margin-top: 0;">
+                                <button class="btn-tts" onclick="speakWord('${w.eng.replace(/'/g, "\\'")}', 'en-US')">미국식</button>
+                                <button class="btn-tts" onclick="speakWord('${w.eng.replace(/'/g, "\\'")}', 'en-AU')">호주식</button>
+                                <button class="btn-tts" onclick="speakWord('${w.eng.replace(/'/g, "\\'")}', 'en-GB')">영국식</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                wordsListHtml += `</div>`;
+            }
+
+            const card = document.createElement('div');
+            card.className = 'history-card';
+            card.innerHTML = `
+                <div class="history-date">${dateStr}</div>
+                <div class="history-score">총 ${record.total}문제 중 ${record.correct}개 아는 단어</div>
+                <div class="history-details">
+                    <span style="color: #10b981; margin-right: 12px;">아는 단어: ${record.correct}개</span>
+                    <span style="color: #ef4444; margin-right: 12px;">모르는 단어: ${record.wrong}개</span>
+                    <span style="color: #3b82f6;">정답률: ${accuracy}%</span>
+                </div>
+                ${wordsListHtml}
+            `;
+            listContainer.appendChild(card);
+        });
+    }
+
+    function toggleForm(forceOpen) {
+        const form = document.getElementById('word-form');
+        const btn = document.getElementById('btn-toggle-form');
+        
+        if (forceOpen === false || !form.classList.contains('hidden')) {
+            form.classList.add('hidden');
+            btn.innerText = '+ 새로운 단어 추가';
+            clearForm();
+        } else {
+            form.classList.remove('hidden');
+            btn.innerText = '취소';
+            if (document.getElementById('meaning-rows-container').children.length === 0) {
+                addMeaningRow(); 
+            }
+        }
+    }
+
+    function addMeaningRow(type = 'noun', ko = '') {
+        const container = document.getElementById('meaning-rows-container');
+        const row = document.createElement('div');
+        row.className = 'meaning-row';
+        row.innerHTML = `
+            <select class="form-control type-select">
+                <option value="noun" ${type === 'noun' ? 'selected' : ''}>명사</option>
+                <option value="verb" ${type === 'verb' ? 'selected' : ''}>동사</option>
+                <option value="adj" ${type === 'adj' ? 'selected' : ''}>형용사</option>
+                <option value="adv" ${type === 'adv' ? 'selected' : ''}>부사</option>
+                <option value="other" ${type === 'other' ? 'selected' : ''}>기타</option>
+            </select>
+            <input type="text" class="form-control ko-input" placeholder="한글 뜻" value="${ko}">
+            <button class="btn-danger" onclick="this.parentElement.remove()">X</button>
+        `;
+        container.appendChild(row);
+    }
+
+    function clearForm() {
+        document.getElementById('edit-word-id').value = '';
+        document.getElementById('input-eng').value = '';
+        document.getElementById('meaning-rows-container').innerHTML = '';
+        document.getElementById('form-title').innerText = '단어 추가';
+    }
+
+    function saveWord() {
+        const id = document.getElementById('edit-word-id').value;
+        const eng = document.getElementById('input-eng').value.trim();
+        
+        const meaningRows = document.querySelectorAll('.meaning-row');
+        const meanings = [];
+        meaningRows.forEach(row => {
+            const type = row.querySelector('.type-select').value;
+            const ko = row.querySelector('.ko-input').value.trim();
+            if (ko) meanings.push({ type, ko });
+        });
+
+        if (!eng || meanings.length === 0) {
+            alert('영어 단어와 최소 1개의 한글 뜻을 입력해주세요.');
+            return;
+        }
+
+        if (id) {
+            const index = wordsData.findIndex(w => w.id == id);
+            if (index !== -1) {
+                wordsData[index].eng = eng;
+                wordsData[index].meanings = meanings;
+            }
+        } else {
+            wordsData.push({
+                id: Date.now(),
+                eng: eng,
+                meanings: meanings,
+                testCount: 0,
+                correctCount: 0,
+                timestamp: Date.now()
+            });
+        }
+
+        saveData();
+        toggleForm(false);
+        renderWordList();
+    }
+
+    function editWord(id) {
+        const word = wordsData.find(w => w.id === id);
+        if (!word) return;
+
+        document.getElementById('edit-word-id').value = word.id;
+        document.getElementById('input-eng').value = word.eng;
+        document.getElementById('form-title').innerText = '단어 수정';
+        
+        document.getElementById('meaning-rows-container').innerHTML = '';
+        word.meanings.forEach(m => addMeaningRow(m.type, m.ko));
+
+        toggleForm(true);
+        document.getElementById('word-form').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function deleteWord(id) {
+        if (confirm('이 단어를 삭제하시겠습니까?')) {
+            wordsData = wordsData.filter(w => w.id !== id);
+            saveData();
+            renderWordList();
+        }
+    }
+
+    let testWords = [];
+    let currentTestIndex = 0;
+    let testResult = { correct: 0, wrong: 0 };
+
+    function startTest() {
+        if (wordsData.length === 0) {
+            alert('등록된 단어가 없습니다. 먼저 단어를 추가해주세요.');
+            return;
+        }
+
+        // 시험 출제 배열 복사 (각 단어별로 O/X 상태를 저장할 필드 준비)
+        testWords = [...wordsData].sort(() => Math.random() - 0.5).slice(0, 10).map(w => ({...w, isCorrectLog: false}));
+        currentTestIndex = 0;
+        testResult = { correct: 0, wrong: 0 };
+
+        document.getElementById('test-area').classList.remove('hidden');
+        document.getElementById('test-result-area').classList.add('hidden');
+        
+        showScreen('test-screen');
+        loadTestWord();
+    }
+
+    function loadTestWord() {
+        const word = testWords[currentTestIndex];
+        document.getElementById('test-progress').innerText = `문제 ${currentTestIndex + 1} / ${testWords.length}`;
+        document.getElementById('test-question').innerText = word.eng;
+        
+        // 동적으로 시험 화면 내의 TTS 버튼에 이벤트 바인딩
+        document.getElementById('test-tts-us').onclick = () => speakWord(word.eng, 'en-US');
+        document.getElementById('test-tts-au').onclick = () => speakWord(word.eng, 'en-AU');
+        document.getElementById('test-tts-gb').onclick = () => speakWord(word.eng, 'en-GB');
+        
+        const meaningsHtml = word.meanings.map(m => `
+            <li style="margin-bottom: 8px;">
+                <span class="badge ${m.type}">${typeLabels[m.type] || "기타"}</span> ${m.ko}
+            </li>
+        `).join('');
+        document.getElementById('test-answer-list').innerHTML = meaningsHtml;
+
+        document.getElementById('test-answer').classList.add('hidden');
+        document.getElementById('btn-show-meaning').classList.remove('hidden');
+        document.getElementById('test-judge-btns').classList.add('hidden');
+    }
+
+    function showTestMeaning() {
+        document.getElementById('test-answer').classList.remove('hidden');
+        document.getElementById('btn-show-meaning').classList.add('hidden');
+        document.getElementById('test-judge-btns').classList.remove('hidden');
+    }
+
+    function judgeAnswer(isCorrect) {
+        // 출제된 배열에 O/X 결과 기록 (이후 시험 기록 화면용)
+        testWords[currentTestIndex].isCorrectLog = isCorrect;
+        const word = testWords[currentTestIndex];
+        
+        const targetWord = wordsData.find(w => w.id === word.id);
+        if (targetWord) {
+            targetWord.testCount += 1;
+            targetWord.lastTested = Date.now();
+            if (isCorrect) targetWord.correctCount += 1;
+            saveData();
+        }
+
+        if (isCorrect) testResult.correct++;
+        else testResult.wrong++;
+
+        currentTestIndex++;
+
+        if (currentTestIndex < testWords.length) {
+            loadTestWord();
+        } else {
+            finishTest();
+        }
+    }
+
+    function finishTest() {
+        // 시험 기록용 세부 단어 데이터 추출
+        const testedWordsLog = testWords.map(w => ({
+            eng: w.eng,
+            isCorrect: w.isCorrectLog
+        }));
+
+        const testLog = {
+            id: Date.now(),
+            date: Date.now(),
+            total: testWords.length,
+            correct: testResult.correct,
+            wrong: testResult.wrong,
+            words: testedWordsLog // 시험 기록 조회 화면에 띄워줄 세부 단어 이력
+        };
+        
+        testHistoryData.unshift(testLog);
+        saveHistory();
+
+        document.getElementById('test-area').classList.add('hidden');
+        document.getElementById('test-result-area').classList.remove('hidden');
+        
+        // 지시사항 반영: 시험 결과 통계 라벨링을 직관적으로 변경
+        document.getElementById('test-result-stats').innerHTML = `
+            <span style="color: #10b981;">아는 단어: ${testResult.correct}개</span> <br>
+            <span style="color: #ef4444;">모르는 단어: ${testResult.wrong}개</span>
+        `;
+    }
+
+    // 초기화 처리
+    document.getElementById('total-words-count').innerText = wordsData.length;
+</script>
+
+</body>
+</html>
